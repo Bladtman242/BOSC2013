@@ -28,6 +28,12 @@ char* gethostname(char *hostname)
 /* --- execute a shell command --- */
 int executeshellcmd (Shellcmd *shellcmd)
 {
+  char** arg = (*shellcmd->the_cmds).cmd;
+  if(!fork()){
+      execvp(arg[0], arg);
+  }
+  wait();
+  puts("");
   printshellcmd(shellcmd);
 
   return 0;

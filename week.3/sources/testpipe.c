@@ -4,7 +4,7 @@
 #include "pipe.h"
 
 int main(int argc, char** argv){
-  char* arg1[] = { "ls", NULL };
+  char* arg1[] = { "ls", "-l", NULL };
   char* arg2[] = { "rev", NULL };
 
   return pipecmd(arg1[0], arg1, arg2[0], arg2);
