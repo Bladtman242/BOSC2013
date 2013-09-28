@@ -82,7 +82,7 @@ int parsecommand(char *cmdline, Shellcmd *shellcmd)
 	  }
 	else
 	  {
-	    fprintf(stderr, "illegal bakgrounding\n");
+	    fprintf(stderr, "illegal backgrounding\n");
 	    return -1;
 	  }
 	newtoken = 0;

@@ -8,40 +8,96 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <fcntl.h>
 #include <string.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <errno.h>
 #include "parser.h"
 #include "print.h"
 
 /* --- symbolic constants --- */
 #define HOSTNAMEMAX 100
+#define PROMPT "$-> "
 
 /* --- use the /proc filesystem to obtain the hostname --- */
-char* gethostname(char *hostname)
-{
+char* gethostname(char *hostname){
   FILE* f = fopen("/proc/sys/kernel/hostname", "r");
   char* stat = fgets(hostname, HOSTNAMEMAX, f);
+  fclose(f);
+  hostname[strlen(hostname)-1]=0;
   return stat;
 }
 
 /* --- execute a shell command --- */
-int executeshellcmd (Shellcmd *shellcmd)
-{
-  char** arg = (*shellcmd->the_cmds).cmd;
-  if(!fork()){
-      execvp(arg[0], arg);
+//executecmd starts from the last cmd in the cmdline, and moves backwards,
+//+hence, the previous command in the cmdline is the next cmd to be processed
+//+by executecmd, and vice versa.
+//Comments in the function refers to the cmdline when using the terms "next"
+//+and previous.
+int executecmd (Cmd* cmd, int std_out, int bg){
+  //if there are no more commands,
+  //+close the pipe and return
+  if(cmd == NULL){
+    close (std_out);
+    return 0;
   }
-  wait();
-  puts("");
-  printshellcmd(shellcmd);
 
+  //make pipe, to bind the previous cmd's stdout to this one's stdin
+  int pfds[2];
+  pipe(pfds);
+
+  //setup the previous cmds recursively
+  //+bg is set to 0, as only the last cmd in the cmdline (first in terms of this function)
+  //+should be affected by backgrounding
+  executecmd(cmd->next, pfds[1], 0);
+
+  //fork and exec current cmd
+  pid_t child = fork();
+  if(child==0){
+    //copy the pipe's read part to cmd stdin,
+    //+next cmd's
+    //+then close the write part of pipe, we don't need it
+    dup2(pfds[0], 0);
+    dup2(std_out, 1);
+    close(pfds[1]);
+    if(execvp(cmd->cmd[0], cmd->cmd)){
+      printf("Error in: %s\n", cmd->cmd[0]);
+      if(errno == 2){
+        printf("%s not found\n", cmd->cmd[0]);
+      }else {
+        //there must be a better way of interpreting errnos?
+        printf("errno set to: %d", errno);
+      }
+      exit (errno);
+    }
+  }
+
+  //if this is the last cmd (indicated by stdout being 1, this should be done
+  //+differently) and bg isn't set, wait for the this cmd
+  if(std_out == 1 && !bg){
+    waitpid(child, NULL, NULL);
+  } else if (std_out != 1) {
+  //only close the stdout fd if it isn't the stdout of the program,
+  //+otherwise the REPL (yes, I called it REPL) would die
+    close(std_out);
+  }
+  return 0;
+}
+
+int executeshellcmd (Shellcmd *shellcmd){
+  int std_out = 1;
+  if(shellcmd->rd_stdout != NULL){
+    std_out = open(shellcmd->rd_stdout, O_WRONLY|O_CREAT);
+  }
+
+  executecmd(shellcmd->the_cmds, std_out, shellcmd->background);
+  printshellcmd(shellcmd);
   return 0;
 }
 
 /* --- main loop of the simple shell --- */
 int main(int argc, char* argv[]) {
-
   /* initialize the shell */
   char *cmdline;
   char hostname[HOSTNAMEMAX];
@@ -53,7 +109,7 @@ int main(int argc, char* argv[]) {
     /* parse commands until exit or ctrl-c */
     while (!terminate) {
       printf("%s", hostname);
-      if (cmdline = readline("$-> ")) {
+      if (cmdline = readline(PROMPT)) {
         if(*cmdline) {
           add_history(cmdline);
           if (parsecommand(cmdline, &shellcmd)) {
