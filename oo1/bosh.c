@@ -135,7 +135,9 @@ int main(int argc, char* argv[]) {
       if (cmdline = readline(PROMPT)) {
         if(*cmdline) {
           add_history(cmdline);
-          if (parsecommand(cmdline, &shellcmd)) {
+          if (!strcmp(cmdline, "exit")){
+            terminate=1;
+          } else if (parsecommand(cmdline, &shellcmd)) {
             terminate = executeshellcmd(&shellcmd);
           }
         }
