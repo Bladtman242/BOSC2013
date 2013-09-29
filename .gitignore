@@ -15,3 +15,8 @@
 *.exe
 *.out
 *.app
+
+# pdf and latex auxiliaries
+*.log
+*.aux
+*.pdf
