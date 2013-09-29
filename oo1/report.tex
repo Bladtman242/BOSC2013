@@ -1,0 +1,52 @@
+\documentclass[a4paper, titlepage, draft]{article}
+
+\usepackage{courier} % Required for the courier font
+\usepackage[utf8]{inputenc}
+\usepackage{verbatim}
+
+\begin{document}
+
+\title{BOSC2013 OO1 - the BOSC shell}
+\author{Sigurt Bladt Dinesen \\sidi{@}itu.dk}
+\maketitle
+\section*{Forord}
+\section*{Opgaver og løsninger}
+\subsection*{Værtsnavn}
+\textit{Kommando-prompten skal vise navnet på a den host den kører på}\\
+
+Det sørger funktionen \emph{gethostname} for, som vist i appendix
+\ref{gethostname}. Funktionen bruger biblioteksfunktionen \emph{fopen} til at
+skabe en filstrøm fra\\\emph{/proc/sys/kernel/hostname}, der så bruges i et kald
+til fgets, sammen med et array af arbitrær længde, og dettes længde. Dette
+array, givet som parameter til funktionen, bliver da fyldt med den første (og
+eneste) linje i filen \emph{hostname}.
+
+\subsection*{Enkeltstående kommandoer}
+\textit{ En bruger skal kunne indtaste almindelige enkeltstå aende kommandoer, så a som
+	ls, cat og wc. Hvis kommandoen ikke findes skal der udskrives enCommand
+	not found meddelelse.}\\
+
+executecmd starts from the last cmd in the cmdline, and moves backwards,
+hence, the previous command in the cmdline is the next cmd to be processed
+by executecmd, and vice versa.
+Comments in the function refers to the cmdline when using the terms "next"
+and previous.
+if there are no more commands,
+close the pipe and return
+make pipe, to bind the previous cmd's stdout to this one's stdin
+setup the previous cmds recursively
+bg is set to 0, as only the last cmd in the cmdline (first in terms of this function)
+should be affected by backgrounding
+fork and exec current cmd
+copy the pipe's read part to cmd stdin,
+next cmd's
+then close the write part of pipe, we don't need it
+there must be a better way of interpreting errnos?
+if this is the last cmd (indicated by stdout being 1, this should be done
+differently) and bg isn't set, wait for the this cmd
+only close the stdout fd if it isn't the stdout of the program,
+otherwise the REPL (yes, I called it REPL) would die
+\newpage
+\appendix
+\input{gethostname}
+\end{document}

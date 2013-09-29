@@ -15,10 +15,13 @@
 #include <errno.h>
 #include "parser.h"
 #include "print.h"
+#include <signal.h>
 
 /* --- symbolic constants --- */
 #define HOSTNAMEMAX 100
 #define PROMPT "$-> "
+
+/* --- trap sigint --- */
 
 /* --- use the /proc filesystem to obtain the hostname --- */
 char* gethostname(char *hostname){
@@ -35,7 +38,7 @@ char* gethostname(char *hostname){
 //+by executecmd, and vice versa.
 //Comments in the function refers to the cmdline when using the terms "next"
 //+and previous.
-int executecmd (Cmd* cmd, int std_out, int bg){
+int executecmd (Cmd* cmd, int std_in, int std_out, int bg){
   //if there are no more commands,
   //+close the pipe and return
   if(cmd == NULL){
@@ -50,7 +53,7 @@ int executecmd (Cmd* cmd, int std_out, int bg){
   //setup the previous cmds recursively
   //+bg is set to 0, as only the last cmd in the cmdline (first in terms of this function)
   //+should be affected by backgrounding
-  executecmd(cmd->next, pfds[1], 0);
+  executecmd(cmd->next, std_in, pfds[1], 0);
 
   //fork and exec current cmd
   pid_t child = fork();
@@ -77,21 +80,29 @@ int executecmd (Cmd* cmd, int std_out, int bg){
   //+differently) and bg isn't set, wait for the this cmd
   if(std_out == 1 && !bg){
     waitpid(child, NULL, NULL);
-  } else if (std_out != 1) {
+  }
   //only close the stdout fd if it isn't the stdout of the program,
   //+otherwise the REPL (yes, I called it REPL) would die
-    close(std_out);
+  //+neglecting to close stdout will prevent the reading cmd from terminating,
+  //causing the dreaded "ls | cat sort of works, but ls | wc does not" problem to occur
+  else if (std_out != 1){
+     close(std_out);
   }
   return 0;
 }
 
 int executeshellcmd (Shellcmd *shellcmd){
+  int std_in = 0;
+  if(shellcmd->rd_stdin != NULL){
+    std_in = open(shellcmd->rd_stdin, O_WRONLY|O_CREAT);
+  }
+
   int std_out = 1;
   if(shellcmd->rd_stdout != NULL){
     std_out = open(shellcmd->rd_stdout, O_WRONLY|O_CREAT);
   }
 
-  executecmd(shellcmd->the_cmds, std_out, shellcmd->background);
+  executecmd(shellcmd->the_cmds, std_in, std_out, shellcmd->background);
   printshellcmd(shellcmd);
   return 0;
 }
