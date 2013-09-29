@@ -42,6 +42,17 @@ int executecmd (Cmd* cmd, int std_in, int std_out, int bg){
   //if there are no more commands,
   //+close the pipe and return
   if(cmd == NULL){
+    if(std_in != 0){
+      puts("copying");
+      void* buf[1024];
+      int size=0;
+      do {
+        size = read(std_in, buf, 1024);
+        write(std_out, buf, size);
+        printf("did %d bytes, errno is: %d\n", size, errno);
+      } while (size > 0);
+      close (std_in);
+    }
     close (std_out);
     return 0;
   }
@@ -94,7 +105,7 @@ int executecmd (Cmd* cmd, int std_in, int std_out, int bg){
 int executeshellcmd (Shellcmd *shellcmd){
   int std_in = 0;
   if(shellcmd->rd_stdin != NULL){
-    std_in = open(shellcmd->rd_stdin, O_WRONLY|O_CREAT);
+    std_in = open(shellcmd->rd_stdin, O_RDONLY);
   }
 
   int std_out = 1;
