@@ -8,4 +8,7 @@ bosh: bosh.o ${OBJS}
 	${CC} -g -o $@ bosh.o ${OBJS} ${LIBS}
 
 clean:
-	@rm -rf *o bosh
+	@rm -rf *o 
+
+cleanall: clean
+	@rm bosh
