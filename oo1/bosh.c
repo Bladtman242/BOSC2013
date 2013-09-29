@@ -41,6 +41,7 @@ char* gethostname(char *hostname){
 int executecmd (Cmd* cmd, int std_in, int std_out, int bg){
   //if there are no more commands,
   //+close the pipe and return
+  //if stdin is set, copy it to stdout before closing
   if(cmd == NULL){
     if(std_in != 0){
       puts("copying");
