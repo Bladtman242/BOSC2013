@@ -22,6 +22,10 @@
 #define PROMPT "$-> "
 
 /* --- trap sigint --- */
+void siginttrap(int signal){
+  printf("\nI gots sigint %d\n", signal);
+  //exit (0);
+}
 
 /* --- use the /proc filesystem to obtain the hostname --- */
 char* gethostname(char *hostname){
@@ -42,6 +46,7 @@ int executecmd (Cmd* cmd, int std_in, int std_out, int bg){
   //if there are no more commands,
   //+close the pipe and return
   //if stdin is set, copy it to stdout before closing
+  //+doing it this way is basically shit, I might look into it later.
   if(cmd == NULL){
     if(std_in != 0){
       puts("copying");
@@ -73,6 +78,7 @@ int executecmd (Cmd* cmd, int std_in, int std_out, int bg){
     //copy the pipe's read part to cmd stdin,
     //+next cmd's
     //+then close the write part of pipe, we don't need it
+    signal(SIGINT, siginttrap);
     dup2(pfds[0], 0);
     dup2(std_out, 1);
     close(pfds[1]);

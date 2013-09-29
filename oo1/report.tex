@@ -16,7 +16,7 @@
 
 Det sørger funktionen \emph{gethostname} for, som vist i appendix
 \ref{gethostname}. Funktionen bruger biblioteksfunktionen \emph{fopen} til at
-skabe en filstrøm fra\\\emph{/proc/sys/kernel/hostname}, der så bruges i et kald
+skabe en filstrøm fra \emph{/proc/sys/\linebreak[0]kernel/hostname}, der så bruges i et kald
 til fgets, sammen med et array af arbitrær længde, og dettes længde. Dette
 array, givet som parameter til funktionen, bliver da fyldt med den første (og
 eneste) linje i filen \emph{hostname}.
