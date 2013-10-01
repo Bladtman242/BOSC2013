@@ -132,6 +132,7 @@ int main(int argc, char* argv[]) {
   char hostname[HOSTNAMEMAX];
   int terminate = 0;
   Shellcmd shellcmd;
+  signal(SIGINT, SIG_IGN);
 
   if (gethostname(hostname)) {
 
