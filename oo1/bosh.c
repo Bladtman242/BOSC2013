@@ -24,7 +24,7 @@
 /* --- trap sigint --- */
 void siginttrap(int signal){
   printf("\nI gots sigint %d\n", signal);
-  //exit (0);
+  exit (0);
 }
 
 /* --- use the /proc filesystem to obtain the hostname --- */
@@ -78,10 +78,10 @@ int executecmd (Cmd* cmd, int std_in, int std_out, int bg){
     //copy the pipe's read part to cmd stdin,
     //+next cmd's
     //+then close the write part of pipe, we don't need it
-    signal(SIGINT, siginttrap);
     dup2(pfds[0], 0);
     dup2(std_out, 1);
     close(pfds[1]);
+    signal(SIGINT, siginttrap);
     if(execvp(cmd->cmd[0], cmd->cmd)){
       printf("Error in: %s\n", cmd->cmd[0]);
       if(errno == 2){

@@ -1,6 +1,6 @@
 \section{Retrieving the system hostname}
 \label{gethostname}
-\begin{verbatim}
+\begin{lstlisting}[language=C]
 1 char* gethostname(char *hostname){
 2   FILE* f = fopen("/proc/sys/kernel/hostname", "r");
 3   char* stat = fgets(hostname, HOSTNAMEMAX, f);
@@ -8,4 +8,4 @@
 5   hostname[strlen(hostname)-1]=0;
 6   return stat;
 7 }
-\end{verbatim}
+\end{lstlisting}

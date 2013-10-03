@@ -1,0 +1,8 @@
+\section{A signal handler}
+\label{siginttrap}
+\begin{lstlisting}[language=C]
+1 void siginttrap(int signal){
+2   printf("\nI gots sigint %d\n", signal);
+3   exit (0);
+4 }
+\end{lstlisting}

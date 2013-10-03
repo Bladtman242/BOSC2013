@@ -1,0 +1,83 @@
+\documentclass[a4paper, titlepage]{article}
+
+\usepackage{courier} % Required for the courier font
+\usepackage{listings}
+\lstset{showstringspaces=false}
+\usepackage[utf8]{inputenc}
+
+\begin{document}
+
+\title{BOSC2013 OO1 - the BOSC shell}
+\author{Sigurt Bladt Dinesen \\sidi{@}itu.dk}
+\maketitle
+\section*{Opgaver og løsninger}
+\subsection*{Værtsnavn}
+\textit{Kommando-prompten skal vise navnet på a den host den kører på}\\
+
+Det sørger funktionen \emph{gethostname} for, som vist i appendix
+\ref{gethostname}. Funktionen bruger biblioteksfunktionen \emph{fopen} til at
+skabe en filstrøm fra \emph{/proc/sys/\linebreak[0]kernel/hostname}, der så bruges i et kald
+til fgets, sammen med et array af arbitrær længde, og dettes længde. Dette
+array, givet som parameter til funktionen, bliver da fyldt med den første (og
+eneste) linje i filen \emph{hostname}.
+
+\subsection*{Enkeltstående kommandoer}
+\textit{ En bruger skal kunne indtaste almindelige enkeltstå aende kommandoer, så a som
+	ls, cat og wc. Hvis kommandoen ikke findes skal der udskrives enCommand
+	not found meddelelse.}\\
+
+\emph{executecmd} (appendix \ref{forkexec}) bruger biblioteksfunktionen
+\emph{fork} til at starte en ny process der, via biblioteksfunktionen
+\emph{execvp}, erstater sig selv med programmet der beskrives af testkstrengen
+indtastet af brugeren.
+Magien sker i linje 23 og 29.
+
+\subsection*{Baggrundsprocessor}
+\textit{Kommandoer skal kunne eksekvere som baggrundsprocesser (ved brug af \&)
+	sådan at mange programmer kan køres på a samme tid.}\\
+
+I appendix \ref{forkexec}, linje 40-42, sørger programmet for kun at vente på
+den forkede process, hvis bg ikke er sat på Shellcmd'en.
+
+\subsection*{Piping}
+\textit{Det skal være muligt at anvende pipes.}\\
+
+Kommandoer behandles rekursivt.
+Hvert kald opretter et rør, hvis ud-ende overskriver kommandoens stdin.
+Ind-enden sendes med til den foregående kommando;
+det næste lag af rekursion, der overskriver sin stdout med den.
+Det er en simpel løsning, der har den ulempe at rekursionsstakken overflyder
+hvis rør-kæden bliver for lang (25 kommandoer på mit system).
+Alternativt kunne man køre en løkke (eller to) over komandolisten.
+
+\subsection*{Redirection}
+\textit{ Der skal være indbygget funktionalitet som gør de muligt at lave redirection
+af stdin og stdout til filer.}\\
+
+To af \emph{executecmd}'s parametre, std\_in og std\_out, sættes af den kaldende
+funktion (\emph{executeshellcmd}, ej beskrevet i denne rapport) til de
+relevante file descriptors. \emph{executecmd} overskriver den sidste kommandos
+stdout med std\_out, og kopierer manuelt std\_in til den første komandos stdin.
+Stdin delen er noget uelegant, og kan alternativt gøres ved et look-ahead når
+der forkes. std\_in kunne så overskrive den første kommandos stdin ligesom det
+det er tilfældet for resten af kommandoerne.
+
+\subsection*{SIGINT}
+\textit{ Tryk på a Ctrl-C skal afslutte det program, der kører i bosh shellen, men ikke
+	shell'en selv.}\\
+
+Dette gøres ved at ignorere SIGINT i bosh processen (implementeret ved et kald
+til \emph{signal}i \emph{main}), og registrere en funktion, \emph{siginttrap},
+(appendix \ref{siginttrap}) som handler i den forkede process. Det virker dog
+ikke helt efter hensigten, da siginttrap aldrig printer til konsollen.
+
+\newpage
+\appendix
+\input{gethostname}
+\pagebreak
+\input{forkexec}
+\pagebreak
+\input{inttrap}
+\pagebreak
+\input{code}
+\end{document}

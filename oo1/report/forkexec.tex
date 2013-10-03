@@ -1,0 +1,51 @@
+\section{Forking and Executing a Command}
+\label{forkexec}
+\begin{lstlisting}[language=C]
+1  int executecmd (Cmd* cmd, int std_in, int std_out, int bg){
+2    if(cmd == NULL){
+3      if(std_in != 0){
+4        puts("copying");
+5        void* buf[1024];
+6        int size=0;
+7        do {
+8          size = read(std_in, buf, 1024);
+9          write(std_out, buf, size);
+10         printf("did %d bytes, errno is: %d\n", size, errno);
+11       } while (size > 0);
+12       close (std_in);
+13     }
+14     close (std_out);
+15     return 0;
+16   }
+17 
+18   int pfds[2];
+19   pipe(pfds);
+20 
+21   executecmd(cmd->next, std_in, pfds[1], 0);
+22 
+23   pid_t child = fork();
+24   if(child==0){
+25     signal(SIGINT, siginttrap);
+26     dup2(pfds[0], 0);
+27     dup2(std_out, 1);
+28     close(pfds[1]);
+29     if(execvp(cmd->cmd[0], cmd->cmd)){
+30       printf("Error in: %s\n", cmd->cmd[0]);
+31       if(errno == 2){
+32         printf("%s not found\n", cmd->cmd[0]);
+33       }else {
+34         printf("errno set to: %d", errno);
+35       }
+36       exit (errno);
+37     }
+38   }
+39 
+40   if(std_out == 1 && !bg){
+41     waitpid(child, NULL, NULL);
+42   }
+43   else if (std_out != 1){
+44      close(std_out);
+45   }
+46   return 0;
+47 }
+\end{lstlisting}
