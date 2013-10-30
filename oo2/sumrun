@@ -1,0 +1,15 @@
+\time -p ./sumsqrt 200000000 1
+\time -p ./sumsqrt 200000000 1
+\time -p ./sumsqrt 200000000 1
+
+\time -p ./sumsqrt 200000000 2
+\time -p ./sumsqrt 200000000 2
+\time -p ./sumsqrt 200000000 2
+
+\time -p ./sumsqrt 200000000 4
+\time -p ./sumsqrt 200000000 4
+\time -p ./sumsqrt 200000000 4
+
+\time -p ./sumsqrt 200000000 8
+\time -p ./sumsqrt 200000000 8
+\time -p ./sumsqrt 200000000 8

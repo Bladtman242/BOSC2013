@@ -1,0 +1,13 @@
+kind,cores,time
+real, 1, 7.743
+user, 1, 7.733
+
+
+real, 2, 4.42
+user, 2, 8.54
+
+real, 4, 4.40
+user, 4, 8.55
+
+real, 8, 4.48
+user, 8, 8.54
