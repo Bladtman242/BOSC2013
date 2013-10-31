@@ -12,9 +12,50 @@
 \maketitle
 \section*{Opgaver og løsninger}
 \subsection*{Parallelism}
-\textit{Assume that the list implemetation is used in asympnchronous
+\textit{Assume that the list implemetation is used in an asynchronous
 environment. What issues might occur?}\\
 
-\subsection*{Baggrundsprocessor}
+Since \emph{list\_remove} and \emph{list\_add} work on the same list (albeit on
+different ends of it), raise conditions would occur if different threads of
+execution were to run these methods simultaneously. In fact, different threads
+running just \textit{one} of these methods would be problematic. The trivial
+example is that of reading from, and writing to, a variable, e.g. to increment
+its value by a constant.
+
+The execution of such example is illustrated in figure
+\ref{tab:threadaccess}, where $T_2$ sets the shared entity to the result
+applying a function to it, regardless of changes made by $T_1$. After
+execution, $S$ is the result of applying $T_2.f$ to $\alpha$, when it should
+have been the result of applying $T_2.f$ to $\alpha'$. The thing to notice here
+is that $$T_2.f(\alpha) \neq T_2.f(\alpha') = T_2.f(T_1.f(\alpha))$$
+
+\begin{table}[hbtp]
+	\centering
+	\begin{tabular}{|l|l|r|}
+		\hline
+		$T_1\ action$&$T_2\ action$&$S\ value$\\
+		\hline
+		&&$\alpha$\\
+		\hline
+		$T_1.a = S$&&$\alpha$\\
+		\hline
+		&$T_2.a = S$&$\alpha$\\
+		\hline
+		$S = T_1.f(S) = \alpha'$&&$T_1.f(\alpha)$\\
+		\hline
+		&$S = T_2.f(S)$&$T_2.f(\alpha)$\\
+		\hline
+	\end{tabular}
+	\caption{
+		Execution of two threads on a shared entity. The figure shows
+		the actions of two threads, $T_1$ and $T_2$, operating on a
+		shared value $S$.
+		\label{tab:threadaccess}
+	}
+\end{table}
+
+
+Similar problems would
+occur for the next variables of the list's nodes.
 
 \end{document}
