@@ -2,7 +2,7 @@
 
 \usepackage{courier} % Required for the courier font
 \usepackage{listings}
-\lstset{showstringspaces=false}
+\lstset{showstringspaces=false, numbers=left, frame=single, breaklines=true, firstnumber=0}
 \usepackage[utf8]{inputenc}
 
 \begin{document}
@@ -58,4 +58,11 @@ is that $$T_2.f(\alpha) \neq T_2.f(\alpha') = T_2.f(T_1.f(\alpha))$$
 Similar problems would
 occur for the next variables of the list's nodes.
 
+\pagebreak
+\lstinputlisting{prodcons.c}[name=prod]
+\lstinputlisting{sumsqrt.c}
+\lstinputlisting{list/main.c}
+\lstinputlisting{list/list.c}
+\lstinputlisting{makefile}
+\lstinputlisting{list/Makefile}
 \end{document}
