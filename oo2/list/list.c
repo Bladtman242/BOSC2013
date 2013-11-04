@@ -33,10 +33,15 @@ List *list_new(void)
 void list_add(List *l, Node *n)
 {
 	pthread_mutex_lock(&mutex);
-	l->first->next = n
-	l->last->next = n;
-	l->last = n;
-	l->len++;
+	if(l->len == 0){
+		l->first->next = n;
+		l->last = n;
+		l->len++;
+	}else{
+		l->last->next = n;
+		l->last = n;
+		l->len++;
+	}
 	pthread_mutex_unlock(&mutex);
 }
 
@@ -49,7 +54,6 @@ Node *list_remove(List *l)
 		return NULL;
 	}
 
-	//rethink logic for len=0 and len!=0
 	Node *n = l->first->next;
 	l->first->next = n->next;
 	l->len--;
