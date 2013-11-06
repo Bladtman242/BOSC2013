@@ -2,9 +2,10 @@ all: fifo liblist.a
 
 OBJS = list.o main.o 
 LIBS= -lpthread
+CFLAGS= "-ggdb"
 
 fifo: ${OBJS}
-	gcc -o $@ ${OBJS} ${LIBS} -ggdb
+	gcc -o $@ ${OBJS} ${LIBS}
 
 liblist.a: list.o
 	ar rcs liblist.a list.o

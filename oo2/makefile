@@ -1,5 +1,5 @@
 prodcons: prodcons.o 
-	gcc -static -Wall -I./list -L./list -o $@ prodcons.o -llist -lpthread -ggdb
+	gcc -g -static -Wall -I./list -L./list -o $@ prodcons.o -llist -lpthread
 
 report: report/report.pdf
 report/report.pdf: report/report.tex
