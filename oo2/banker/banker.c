@@ -1,5 +1,5 @@
-#include<stdio.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/time.h>
 #include <pthread.h>
 
@@ -14,9 +14,19 @@ typedef struct state {
 // Global variables
 int m, n;
 State *s = NULL;
+pthread_mutex_t mutex;
 
 // Mutex for access to state.
 pthread_mutex_t state_mutex;
+
+void printavail(){
+  printf("Avaialble: [");
+  int i;
+  for(i=0; i<n; i++){
+    printf("%i,", s->available[i]);
+  }
+  puts("]");
+}
 
 /* Random sleep function */
 void Sleep(float wait_time_ms)
@@ -26,16 +36,76 @@ void Sleep(float wait_time_ms)
   usleep((int) (wait_time_ms * 1e3f)); // convert from ms to us
 }
 
+//return 1 if a is <= b for all a[i] b[i], else return 0
+int arrayLE(int* a, int* b, int len)
+{
+  int i;
+  for(i=0; i<len; i++){
+    if(a[i] > b[i]){
+      return 0;
+    }
+  }
+  return 1;
+}
+
 /* Allocate resources in request for process i, only if it 
    results in a safe state and return 1, else return 0 */
-int resource_request(int i, int *request)
+int resource_request(int pi, int *request)
 {
-  return 0;
+  int work[n];
+  int finish[m];
+  int i;
+  for(i=0;i<m;i++){
+    finish[i]=0;
+  }
+  for(i=0;i<n;i++){
+    work[i]=s->available[i];
+  }
+  int k=0;
+  while(1){
+    while(!(!finish[k] && arrayLE(request, work, n)) && k<m){
+      k++;
+    }
+
+    if(!(!finish[k] && arrayLE(request, work, n))){
+      break;
+    }
+
+    for(i=0; i<n; i++){
+      work[i] = work[i] + s->allocation[pi][k];
+    }
+    finish[k]=1;
+  }
+  k=1;
+  for(i=0; i<m; i++){
+    if (!finish[i])
+      k=0;
+    break;
+  }
+  if(k){
+    pthread_mutex_lock(&mutex);
+    for(i=0; i<n; i++){
+      s->allocation[pi][i] = s->allocation[pi][i] + request[i];
+      s->available[i] = s->available[i] - request[i];
+      s->need[pi][i] = s->need[pi][i] - request[i];
+    }
+    printavail();
+    pthread_mutex_unlock(&mutex);
+  }
+  return k;
 }
 
 /* Release the resources in request for process i */
 void resource_release(int i, int *request)
 {
+  int j;
+  pthread_mutex_lock(&mutex);
+  for(j=0; j<n; j++){
+    s->available[j] = s->available[j] + request[j];
+    s->allocation[i][j] = s->allocation[i][j] - request[j];
+    s->need[i][j] = s->need[i][j] + request[j];
+  }
+  pthread_mutex_unlock(&mutex);
 }
 
 /* Generate a request vector */
@@ -90,6 +160,8 @@ void *process_thread(void *param)
 
 int main(int argc, char* argv[])
 {
+  pthread_mutex_init(&mutex, NULL);
+
   /* Get size of current state as input */
   int i, j;
   printf("Number of processes: ");
@@ -97,17 +169,36 @@ int main(int argc, char* argv[])
   printf("Number of resources: ");
   scanf("%d", &n);
 
-  /* Allocate memory for state */
-  if (s == NULL) { printf("\nYou need to allocate memory for the state!\n"); exit(0); };
+  int res[n];
+  int avail[n];
+  int **max[m];
+  int **alloc[m];
+  int **need[m];
 
+  for(i=0; i<m;i++){
+    max[i] = malloc(sizeof(int)*n);
+    alloc[i] = malloc(sizeof(int)*n);
+    need[i] = malloc(sizeof(int)*n);
+  }
+
+  State p = (State)
+  {
+    .resource = (int*) res,
+    .available = (int*) avail,
+    .max = (int**) max,
+    .allocation = (int**) alloc,
+    .need = (int**) need
+  };
+  s = &p;
   /* Get current state as input */
   printf("Resource vector: ");
   for(i = 0; i < n; i++)
     scanf("%d", &s->resource[i]);
   printf("Enter max matrix: ");
   for(i = 0;i < m; i++)
-    for(j = 0;j < n; j++)
+    for(j = 0;j < n; j++){
       scanf("%d", &s->max[i][j]);
+    }
   printf("Enter allocation matrix: ");
   for(i = 0; i < m; i++)
     for(j = 0; j < n; j++) {
@@ -118,7 +209,7 @@ int main(int argc, char* argv[])
   /* Calcuate the need matrix */
   for(i = 0; i < m; i++)
     for(j = 0; j < n; j++)
-      s->need[i][j] = s->max[i][j]-s->allocation[i][j];
+      s->need[i][j] = s->max[i][j] - s->allocation[i][j];
 
   /* Calcuate the availability vector */
   for(j = 0; j < n; j++) {
@@ -147,20 +238,29 @@ int main(int argc, char* argv[])
   printf("\n");
 
   /* If initial state is unsafe then terminate with error */
+  int req[n];
+  for(i=0; i<n; i++)
+    req[i]=0;
+
+  for(i=0; i<m; i++)
+    if (!resource_request(i, req))
+      exit -1;
 
   /* Seed the random number generator */
   struct timeval tv;
   gettimeofday(&tv, NULL);
   srand(tv.tv_usec);
-  
+
   /* Create m threads */
   pthread_t *tid = malloc(m*sizeof(pthread_t));
   for (i = 0; i < m; i++)
     pthread_create(&tid[i], NULL, process_thread, (void *) (long) i);
-  
+
   /* Wait for threads to finish */
   pthread_exit(0);
   free(tid);
 
   /* Free state memory */
 }
+
+// vim: set ts=2 sw=2 et:
