@@ -52,27 +52,34 @@ int arrayLE(int* a, int* b, int len)
    results in a safe state and return 1, else return 0 */
 int resource_request(int pi, int *request)
 {
+  if(!arrayLE(request, s->available, n))
+    return 0;
+
   int work[n];
   int finish[m];
+  int tmpNeed[n];
   int i;
   for(i=0;i<m;i++){
     finish[i]=0;
   }
   for(i=0;i<n;i++){
-    work[i]=s->available[i];
+    work[i]=s->available[i] - request[i];
+  }
+  for(i=0;i<n;i++){
+    tmpNeed[i]=s->need[pi][i] - request[i];
   }
   int k=0;
   while(1){
-    while(!(!finish[k] && arrayLE(request, work, n)) && k<m){
+    while(!(!finish[k] && arrayLE(tmpNeed, work, n)) && k<m){
       k++;
     }
 
-    if(!(!finish[k] && arrayLE(request, work, n))){
+    if(!(!finish[k] && arrayLE(tmpNeed, work, n))){
       break;
     }
 
     for(i=0; i<n; i++){
-      work[i] = work[i] + s->allocation[pi][k];
+      work[i] = work[i] + s->allocation[pi][k] + request[i];
     }
     finish[k]=1;
   }

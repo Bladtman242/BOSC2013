@@ -4,14 +4,64 @@
 \usepackage{listings}
 \lstset{showstringspaces=false, numbers=left, frame=single, breaklines=true, firstnumber=0}
 \usepackage[utf8]{inputenc}
+\usepackage{graphicx}
 
 \begin{document}
 
-\title{BOSC2013 OO2 - Asynchronous lists and stuff}
+\title{BOSC2013 OO2 - Asynchronicity and C}
 \author{Sigurt Bladt Dinesen \\sidi{@}itu.dk}
 \maketitle
-\section*{Opgaver og løsninger}
-\subsection*{Parallelism}
+\section*{Multi-threaded sum}
+\subsection*{A faster sum of $n$ square-roots}
+\textit{Rewrite the program in such a way that it will actually run
+faster, than it would have on a single thread.}\\
+
+This is achieved by letting $m$ threads sum the squares of $\frac{n}{m}$ numbers
+each in parallel, and then summing the results in linear time afterwards. The
+advantage of this approach is that the use of mutexes is redundant: Each thread
+keeps its own tentative sum, the collection of which is summed only after all
+threads finish.
+
+A more elegant approach would be to run the tentative sums, and
+then have each thread end by locking a mutex, adding its sum to a common sum
+variable, and unlocking the mutex. The later solution would also offer a performance
+increase proportional to the ratio $\frac{n}{m}$, which will usually be large.
+
+To conclude the assignment: The runtime of \emph{sumsqrt} is now
+$\frac{n}{m}+m$
+rather than $n$ as it was initially (provided at least $m$ logical cores of course).
+
+A visual representation of the runtime of \emph{sumsqrt} can be seen in figure
+\ref{fig:sumcores}. It can be seen that on one core, the real time and cpu time
+spend in user land are equal, on two cores the real time is almost halved,
+although the user land cpu time increases slightly, probably due to threading
+overhead. It can also be seen that threads beyond the number of cores does
+virtually nothing to either times. Kernel mode cpu time is omitted as it is
+negligible here. Had the program used mutexes, that may not have been the case.
+
+\begin{figure}[hbpt]
+	\includegraphics[scale=0.5]{report/pics/sumres}
+	\caption{Running sumsqrt on the first 200 million natural numbers on
+	1, 2, 4, and 8 threads on an 1.6 Ghz Intel core 2 Duo processor.
+	Data was collected over a total of 12 runs.}
+	\label{fig:sumcores}
+\end{figure}
+
+\subsection*{Testing}
+To test \emph{sumsqrt}, first compile by running make sumsqrt in the project root
+directory. Then \emph{sumsqrt} can be used as
+\begin{verbatim}
+	sumsqrt [numbers to root and sum] [number of threads]
+\end{verbatim}
+For example
+\begin{verbatim}
+	sumsqrt 100 4
+\end{verbatim}
+Will calculate the sum of the square roots of numbers 0 though 99, using 4
+threads.
+
+\section*{Multi-threaded FIFO buffer as a linked list}
+\subsection{Parallelized read/write actions}
 \textit{Assume that the list implemetation is used in an asynchronous
 environment. What issues might occur?}\\
 
@@ -57,6 +107,16 @@ is that $$T_2.f(\alpha) \neq T_2.f(\alpha') = T_2.f(T_1.f(\alpha))$$
 
 Similar problems would
 occur for the next variables of the list's nodes.
+
+\subsection{Thread safety}
+\textit{Use a mutex to make a thread-safe version of list.c}\\
+
+This is achieved quite simply by using the C pthread library to take a lock
+before either adding or removing elements in the buffer, and releasing it when
+done. Note that \emph{add} and \emph{remove} uses the same mutex. This is
+necessary as the two functions sometimes will operate on the same variables.
+
+\section{Producer-Consumer with a bounded buffer}
 
 \pagebreak
 \lstinputlisting{prodcons.c}[name=prod]
