@@ -2,17 +2,21 @@
 
 \usepackage{courier} % Required for the courier font
 \usepackage{listings}
-\lstset{showstringspaces=false, numbers=left, frame=single, breaklines=true, firstnumber=0}
+\lstset{showstringspaces=false, numbers=left, frame=single, breaklines=true, firstnumber=1}
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
+\usepackage[bookmarks]{hyperref}
 
 \begin{document}
 
 \title{BOSC2013 OO2 - Asynchronicity and C}
 \author{Sigurt Bladt Dinesen \\sidi{@}itu.dk}
 \maketitle
-\section*{Multi-threaded sum}
-\subsection*{A faster sum of $n$ square-roots}
+\tableofcontents{}
+\pagebreak
+
+\section{Multi-threaded sum}
+\subsection{A faster sum of $n$ square-roots}
 \textit{Rewrite the program in such a way that it will actually run
 faster, than it would have on a single thread.}\\
 
@@ -47,8 +51,12 @@ negligible here. Had the program used mutexes, that may not have been the case.
 	\label{fig:sumcores}
 \end{figure}
 
-\subsection*{Testing}
-To test \emph{sumsqrt}, first compile by running make sumsqrt in the project root
+\subsection{Testing}
+To test \emph{sumsqrt}, first compile by running
+\begin{verbatim}
+make sumsqrt
+\end{verbatim}
+in the project root
 directory. Then \emph{sumsqrt} can be used as
 \begin{verbatim}
 	sumsqrt [numbers to root and sum] [number of threads]
@@ -60,7 +68,7 @@ For example
 Will calculate the sum of the square roots of numbers 0 though 99, using 4
 threads.
 
-\section*{Multi-threaded FIFO buffer as a linked list}
+\section{Multi-threaded FIFO buffer as a linked list}
 \subsection{Parallelized read/write actions}
 \textit{Assume that the list implemetation is used in an asynchronous
 environment. What issues might occur?}\\
@@ -108,21 +116,112 @@ is that $$T_2.f(\alpha) \neq T_2.f(\alpha') = T_2.f(T_1.f(\alpha))$$
 Similar problems would
 occur for the next variables of the list's nodes.
 
-\subsection{Thread safety}
+\subsection{Thread Safety}
 \textit{Use a mutex to make a thread-safe version of list.c}\\
 
 This is achieved quite simply by using the C pthread library to take a lock
 before either adding or removing elements in the buffer, and releasing it when
-done. Note that \emph{add} and \emph{remove} uses the same mutex. This is
-necessary as the two functions sometimes will operate on the same variables.
+done. Packaging all write operations on the list into a critical section ensures
+that the situation in table \ref{tab:threadaccess} can never occur. Note that
+\emph{add} and \emph{remove} uses the same mutex. This is necessary as the two
+functions sometimes will operate on the same variables.
 
 \section{Producer-Consumer with a bounded buffer}
+The producer-controller is implemented with the thread safe list implementation
+from last section. This is not enough however, as we wish to ensure \emph{list\_add}
+and \emph{list\_remove} operations will wait if the list is full or empty,
+respectively. This demand is met by the use of two semaphores, one for adding
+(\emph{empty}) and one for removing (\emph{full}). When a producer wishes to add
+a product, preforms \emph{sem\_wait} on \emph{empty}, to ensure there are empty
+slots in the buffer, and then performs a \emph{sem\_post} on \emph{full} to
+indicate consumers that there is one more full slot. Consumer threads do the
+opposite, that is \emph{sem\_post} is performed on \emph{empty} and
+\emph{sem\_wait} on \emph{full}. The \emph{full} semaphore is initialized to 0,
+and \emph{empty} to the desired buffer size. This corresponds to the notion that
+\emph{full} represents occupied buffer slots (consumabla slots), and
+\emph{empty} represent empty slots (available to the producers).
+
+\subsection{Termination}
+\textit{Make sure the program does not terminate before all products are
+produced and consumed}\\
+
+This is done by keeping the thread ids for consumer and producer threads in two
+lists, and joining on them all in the end of the programs main method. This
+guarantees that program terminates only when all consumers and producers are
+done. The number of product consumed or produced by each thread is determined at
+runtime to be the ratio between the number of products and threads. This ensures
+that all produced products will be consumed, regardless of whether the number of
+producers and consumers are equal.
+
+\subsection{Testing}
+To test the producer-consumer program (and with it the FIFO buffer) compile by
+running
+\begin{verbatim}
+	make prodcons
+\end{verbatim}
+in the project root directory. Then run prodcons as
+\begin{verbatim}
+	prodcons [number of prodcer threads] [number of consumer threads]
+	[buffer size] [number of products]
+\end{verbatim}
+For example,
+\begin{verbatim}
+	./prodcons 10 10 10 20
+\end{verbatim}
+Will run the producer-consumer program with 10 producing threads, each
+producing 2 products, 10 consuming threads, each consuming 2 products, a buffer
+with 10 slots, producing a total of 20 products.
+
+\section{Banker's algorithm}
+\subsection{C Matrix Allocation}
+\textit{Allocate memory for the state's vectors and matrices dynamically}\\
+
+The rows of each matrix are allocated with \emph{malloc}, as C does not have a
+syntax for allocating nested arrays. This memory is never explicitly freed, as
+the arrays are used until program termination anyway.
+
+\subsection{State-safety}
+\textit{Use the Banker's safety algorithm to determine whether a state is
+safe}\\
+
+The function \emph{resource\_request} implements both the request and safety
+algorithm. It takes an array as argument, representing a resource allocation
+request, and then runs the safety algorithm as if the request had already been
+granted.
+
+The \emph{resource\_request} and \emph{resource\_release} functions both
+operates on the same matrices, and therefore lock the same mutex before writing
+to them to avoid race conditions. Using the same mutex ensures that deadlocks
+can never occur, as a deadlock needs a minimum of two locks to wait on.
+
+Before starting the requesting threads, the program runs the safety algorithm
+with a request of 0 of all resources, thus ensuring that the current state
+(equivalent to the state that results of requesting nothing) is safe.
 
 \pagebreak
-\lstinputlisting{prodcons.c}[name=prod]
+\section{Appendix/code}
+\subsection{Multi-threaded sum}
+sumsqrt.c
 \lstinputlisting{sumsqrt.c}
+\subsection{Multi-threaded FIFO buffer as a linked list}
+list/main.c
 \lstinputlisting{list/main.c}
-\lstinputlisting{list/list.c}
-\lstinputlisting{makefile}
+list/list.h
+\lstinputlisting{list/list.h}
+list/main.c
+\lstinputlisting{list/main.c}
+list/Makefile
 \lstinputlisting{list/Makefile}
+\subsection{Producer-Consumer with a bounded buffer}
+prodcons.c
+\lstinputlisting{prodcons.c}
+makefile
+\lstinputlisting{makefile}
+\subsection{Banker's Algorithm}
+banker.c
+\lstinputlisting{banker/banker.c}
+input.txt
+\lstinputlisting{banker/input.txt}
+banker/Makefile
+\lstinputlisting{banker/Makefile}
 \end{document}
