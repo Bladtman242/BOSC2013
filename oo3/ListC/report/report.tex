@@ -1,0 +1,82 @@
+\documentclass[a4paper, titlepage]{article}
+
+\usepackage{courier} % Required for the courier font
+\usepackage{listings}
+\lstset{showstringspaces=false, numbers=left, frame=single, breaklines=true, firstnumber=1}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage[bookmarks]{hyperref}
+
+\begin{document}
+
+\title{BOSC2013 OO3 - Garbage Collection}
+\author{Sigurt Bladt Dinesen \\sidi{@}itu.dk}
+\maketitle
+\tableofcontents{}
+\pagebreak
+
+\section{Exercise 1}
+\subsection{Exercise 1 (i)}
+\textit{Write 3-10 line descriptions of how the abstract machine executes ADD,
+CSTI i, NIL, IFZERO, CONS, CAR , and SETCAR.}\\
+
+$sp$ denotes the stack pointer, and $s[i]$ the element in the $i$'th slot of of the stack.
+\begin{itemize}
+	\item ADD - $s[sp-1]$ is set to the sum of $s[sp]$ and $s[sp-1]$, $sp$
+		is decremented by 1.
+	\item CSTI i - the stack machine pushes the integer i onto the stack,
+		and increments $sp$. To indicate that i is an integer rather
+		than a reference, i's binary representation is shifted one bit
+		to the left, and the rightmost bit is set to 1. We refer to this
+		as "tagging".
+	\item NIL - the stack machine pushes the untagged integer (I.E. a
+		reference) 0 onto the stack.
+	\item IFZERO - the stack machine checks if $s[sp]$ is 0 or NIL, by
+		first untagging it if it is an integer. It then sets the program
+		counter to the "argument" of IFZERO if $s[sp]$ is zero or NIL,
+		and increments it by one otherwise. The stack pointer is
+		decremented by one regardless.
+	\item CONS - the stack machine allocates three words on the heap, and
+		sets the non-header words to $s[sp-1]$ and $s[sp]$ respectively.
+	\item CAR - interprets $s[sp]$ as a word array, raising an error if it
+		is zero, and otherwise replaces it with the first word in the
+		array. $sp$ is decremented by one.
+	\item SETCAR - the stack machine assumes $s[sp]$ is a word and that
+		$s[sp-1]$ is a word array. Then sets the first non-header word
+		of $s[sp-1]$ to $s[sp]$ and decrements $sp$.
+\end{itemize}
+\subsection{Exercise 1 (ii)}
+\textit{Describe the C macros Length, Color, and Paint, and their effect on the
+32-bit header blocks}\\
+
+\begin{itemize}
+	\item Length(hdr) - shifts hdr 2 bits to the right, in effect
+		ignoring the color bits, and applies the binary and operation to
+		the result and the binary value consisting of 22 ones. The
+		result is the value of the bits 9 though 30 i.e the length bits.
+	\item Color(hdr) - By applying binary and to hdr and 3 (11 in binary)
+		the value of the last two bits is obtained - the color bits.
+	\item Paint(hdr, color) - applying binary and to hdr and the result of
+		not 3 returns hdr with both color bits set to zero. Applying
+		binary or to that, and color, returns hdr with the color bits
+		set to the input color.
+\end{itemize}
+\subsection{Exercise 1 (iii)}
+\textit{When does the abstract machine (or mutator) interact with the garbage
+collector?}\\
+
+The stack machine directly calls the \texttt{allocate} method when it puts cons
+cells on the heap. The \texttt{allocate} method may then call \texttt{collect},
+which frees up heap space.
+
+\subsection{Exercise 1 (iv)}
+\textit{Under what circumstances is \emph{\texttt{collect}} called}\\
+
+\texttt{allocate} calls \texttt{collect} if an attempt is made to allocate more
+heap space than is in the free list.
+\section{Exercise 2}
+\textit{Implement the "mark and sweep" algorithm for the listmachine}\\
+
+\subsection{The "mark" phase}
+\subsection{The "sweep" phase}
+\end{document}
