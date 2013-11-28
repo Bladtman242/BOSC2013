@@ -456,7 +456,6 @@ int joinFree(word* header)
   } while(inHeap((word*)block) && White == Color(*block));
   size--;
   *header = mkheader(CONSTAG, size, White); //the tag doesn't matter, so CONSTAG is used as a convenience
-  printf("header: %p, block: %p, afterHeap: %p\n", header, block, afterHeap);
   return size;
 }
 
@@ -540,3 +539,4 @@ int main(int argc, char** argv) {
   }
 }
 // vim: set ts=2 sw=2 et:
+

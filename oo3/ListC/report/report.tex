@@ -72,11 +72,41 @@ which frees up heap space.
 \subsection{Exercise 1 (iv)}
 \textit{Under what circumstances is \emph{\texttt{collect}} called}\\
 
-\texttt{allocate} calls \texttt{collect} if an attempt is made to allocate more
-heap space than is in the free list.
+\texttt{collect} is called whenever the list machine attempts to allocate more
+data than can be fit into a block on the free list. I.e. when there is no more
+memory available on the heap.
+
 \section{Exercise 2}
 \textit{Implement the "mark and sweep" algorithm for the listmachine}\\
 
 \subsection{The "mark" phase}
+The mark phase steps through the stack, looking for references to the heap. It
+does so under the assumption that if a stack element is not an integer, it is a
+heap reference.
+For each heap reference it finds, it calls a recursive function \texttt{mark}
+that colors the referenced block white (marks it), and does the same to any heap references
+that block may contain.
 \subsection{The "sweep" phase}
+The sweep phase steps though every block on the heap, and puts white (marked)
+blocks on the free list. Black blocks (in-use blocks) are colored white, so that
+the next sweep will consider them free unless they are reached in the next mark
+phase.
+
+An auxiliary function called \texttt{freeBlock} is used for putting blocks on
+the free list. It does so by treating the list as a linked list (because it is)
+and then using the standard way of inserting elements into an ordered linked
+list. This means the time complexity of \texttt{freeBlock} is $\Theta(n)$ in the number
+of blocks allready on the free list.\footnote{$\Theta$ as in Bachmann–Landau}
+This makes the \texttt{sweepPhase} function $\Theta(n^2)$ in the number of free
+blocks. Alternatively, the \texttt{sweepPhase} function could discard and
+rebuild the free list anew, allowing a complexity of $\Theta(n)$.
+
+\section{Exercise 3 and 4}
+\textit{Joining adjacent free blocks}\\
+
+This is done by by \texttt{sweepPhase} letting the function \texttt{joinFree}
+determine the how big a step to take through the heap. \texttt{joinFree}
+increases the size bits of the header-block it takes as argument, so that it is
+joined with any free blocks immediately following it. It then returns the size
+of the new block to be the stepping value of \texttt{sweepPhase}.
 \end{document}
