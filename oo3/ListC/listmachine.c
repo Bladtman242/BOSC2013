@@ -80,6 +80,13 @@ typedef unsigned int word;
 
 #define HEAPSIZE 1000
 
+#define TRUE 1
+#define FALSE 0
+
+word* heapFrom;
+word* heapTo;
+word* afterFrom;
+word* afterTo;
 word* heap;
 word* afterHeap;
 word *freelist;
@@ -200,6 +207,7 @@ int* readfile(char* filename) {
 }
 
 word* allocate(unsigned int tag, unsigned int length, int s[], int sp);
+word* allocateStopAndCopy(unsigned int tag, unsigned int length, int s[], int sp);
 
 // The machine: execute the code starting at p[pc] 
 
@@ -292,7 +300,8 @@ int execcode(int p[], int s[], int iargs[], int iargc, int /* boolean */ trace) 
     case NIL:    
       s[sp+1] = 0; sp++; break;
     case CONS: {
-      word* p = allocate(CONSTAG, 2, s, sp); 
+      //word* p = allocate(CONSTAG, 2, s, sp);
+      word* p = allocateStopAndCopy(CONSTAG, 2, s, sp); 
       p[1] = (word)s[sp-1];
       p[2] = (word)s[sp];
       s[sp-1] = (int)p;
@@ -354,6 +363,14 @@ word mkheader(unsigned int tag, unsigned int length, unsigned int color) {
   return (tag << 24) | (length << 2) | color;
 }
 
+int inHeapTo(word* p) {
+  return heapTo <= p && p < afterTo;
+}
+
+int inHeapFrom(word* p) {
+  return heapFrom <= p && p < afterFrom;
+}
+
 int inHeap(word* p) {
   return heap <= p && p < afterHeap;
 }
@@ -397,6 +414,14 @@ void heapStatistics() {
 	 blocks, blocksSize, free, freeSize, largestFree, orphans);
 }
 
+void initHeapStopAndCopy(){
+  heapFrom = (word*)malloc(sizeof(word)*HEAPSIZE*2);
+  heapTo = &heapFrom[(HEAPSIZE/2)-1];
+  afterFrom = heapTo;
+  afterTo = &heapTo[HEAPSIZE];
+  freelist = heapFrom;
+}
+
 void initheap() {
   heap = (word*)malloc(sizeof(word)*HEAPSIZE);
   afterHeap = &heap[HEAPSIZE];
@@ -406,28 +431,39 @@ void initheap() {
   freelist = &heap[0];
 }
 
-void mark(word* block){
- int color = Color(block[0]);
- switch (color)
- {
-  case White:
-    block[0] = Paint(block[0], Black);
-    int i;
-    for(i=1; i<= Length(block[0]); i++){
-      if (!IsInt(block[i])){ //only handle references
-        mark((word*)block[i]);
+int traverse(){
+  int greys = FALSE;
+  word* header = heap;
+  while(inHeap(header)){
+    if(Grey == Color(*header)){
+      *header = Paint(*header, Black);
+      int len = Length(*header);
+      int i;
+      for(i=1; i <= len; i++){
+        if (IsInt(header[i]) || header[i] == 0)
+          continue;
+        if (White == Color(*(word*)header[i])){
+          greys = TRUE;
+          *(word*)header[i] = Paint(*(word*)header[i], Grey);
+        }
       }
     }
-    break;
- }
+      header += Length(*header) +1;
+  }
+  return greys;
 }
 
 void markPhase(int s[], int sp) {
   printf("marking ...\n");
   int i;
   for (i=0; i<=sp; i++) {
-    if (IsInt(s[i])) continue; //only treat heap references
-    mark((word*)s[i]);
+    if (IsInt(s[i]) || 0 == s[i]) //only treat heap references
+      continue;
+    *(word*)s[i] = Paint(*(word*)s[i], Grey);
+  }
+  int greys = TRUE;
+  while (greys) {
+    greys=traverse();
   }
 }
 
@@ -484,11 +520,76 @@ void sweepPhase() {
   }
 }
 
+word* copyBlock(word* block){
+  int j;
+  int len = Length(*block);
+  for(j=0; j<= len; j++){
+    freelist[j] = block[j];
+  }
+  block[1] = (int)freelist;
+  freelist += len +1;
+  return (word*)block[1];
+}
+
+void copyFromTo(){
+  word* header = heapTo;
+  while(header < freelist){ //all blocks in to-space
+    int i;
+    int len = Length(*header);
+    for(i=1; i<=len; i++){ //all words in block
+      if(IsInt(header[i]) || 0 == header[i]){ //only treat references, specifically non-nil references
+        continue;
+      } else if(inHeapFrom((word*)header[i])){ //pointer to the from-space
+        word* oldHeader = (word*)header[i];
+        if(!IsInt(oldHeader[1]) && inHeapTo((word*)oldHeader[1])){ //contains a forward pointer to the to-space
+          header[i] = oldHeader[1];
+        } else { //un-copied  value, needs to be copied
+          header[i] = (int) copyBlock(oldHeader);
+        }
+      }
+    }
+      header += len +1;
+  }
+  word* tmp = heapFrom;
+  heapFrom = heapTo;
+  heapTo = tmp;
+  tmp = afterFrom;
+  afterFrom = afterTo;
+  afterTo = tmp;
+}
+
+void collectStopAndCopy(int s[], int sp){
+  freelist = heapTo;
+  int i;
+  for(i=0; i<sp; i++){
+    if(!IsInt(s[i]) && s[i] != 0)
+      s[i] = (int) copyBlock((word*)s[i]);
+  }
+  copyFromTo();
+}
+
 void collect(int s[], int sp) {
   markPhase(s, sp);
   heapStatistics();
   sweepPhase();
   heapStatistics();
+}
+
+word* allocateStopAndCopy(unsigned int tag, unsigned int length, int s[], int sp){
+  int attempt = 1;
+  do {
+    word* newBlock = freelist;
+    freelist += length +1;
+    if(freelist <= afterFrom){ //is on heap
+      newBlock[0] = mkheader(tag, length, White);
+      return newBlock;
+    }
+    if(attempt == 1){
+      collectStopAndCopy(s, sp);
+    }
+  } while(attempt++ == 1);
+  printf("Out of memory\n");
+  exit(1);
 }
 
 word* allocate(unsigned int tag, unsigned int length, int s[], int sp) {
@@ -534,7 +635,8 @@ int main(int argc, char** argv) {
     return -1;
   } else {
     int trace = argc >= 3 && 0==strncmp(argv[1], "-trace", 7);
-    initheap();
+    //initheap();
+    initHeapStopAndCopy();
     return execute(argc, argv, trace);
   }
 }

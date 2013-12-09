@@ -15,6 +15,9 @@
 \tableofcontents{}
 \pagebreak
 
+\section{Re-handin}
+Exercise 6 has been completed, and is described in section \ref{sec:Ex6}
+
 \section{Exercise 1}
 \subsection{Exercise 1 (i)}
 \textit{Write 3-10 line descriptions of how the abstract machine executes ADD,
@@ -73,33 +76,35 @@ which frees up heap space.
 \textit{Under what circumstances is \emph{\texttt{collect}} called}\\
 
 \texttt{collect} is called whenever the list machine attempts to allocate more
-data than can be fit into a block on the free list. I.e. when there is no more
+data than can be fit into a block on the free-list. I.e. when there is no more
 memory available on the heap.
 
 \section{Exercise 2}
 \textit{Implement the "mark and sweep" algorithm for the listmachine}\\
 
 \subsection{The "mark" phase}
-The mark phase steps through the stack, looking for references to the heap. It
-does so under the assumption that if a stack element is not an integer, it is a
+My first implementation of the mark phase stepped through the stack, looking for
+references to the heap. It did so under the assumption that if a stack element
+is not an integer, it is a
 heap reference.
-For each heap reference it finds, it calls a recursive function \texttt{mark}
-that colors the referenced block white (marks it), and does the same to any heap references
-that block may contain.
+For each heap reference on the stack, a recursive function \texttt{mark} was
+called to color the referenced block white (mark it), and do the same to
+any heap references that block may have contained.
+
 \subsection{The "sweep" phase}
 The sweep phase steps though every block on the heap, and puts white (marked)
-blocks on the free list. Black blocks (in-use blocks) are colored white, so that
+blocks on the free-list. Black blocks (in-use blocks) are colored white, so that
 the next sweep will consider them free unless they are reached in the next mark
 phase.
 
 An auxiliary function called \texttt{freeBlock} is used for putting blocks on
-the free list. It does so by treating the list as a linked list (because it is)
+the free-list. It does so by treating the list as a linked list (because it is)
 and then using the standard way of inserting elements into an ordered linked
 list. This means the time complexity of \texttt{freeBlock} is $\Theta(n)$ in the number
-of blocks allready on the free list.\footnote{$\Theta$ as in Bachmann–Landau}
+of blocks allready on the free-list.\footnote{$\Theta$ as in Bachmann–Landau}
 This makes the \texttt{sweepPhase} function $\Theta(n^2)$ in the number of free
 blocks. Alternatively, the \texttt{sweepPhase} function could discard and
-rebuild the free list anew, allowing a complexity of $\Theta(n)$.
+rebuild the free-list anew, allowing a complexity of $\Theta(n)$.
 
 \section{Exercise 3 and 4}
 \textit{Joining adjacent free blocks}\\
@@ -109,4 +114,56 @@ determine the how big a step to take through the heap. \texttt{joinFree}
 increases the size bits of the header-block it takes as argument, so that it is
 joined with any free blocks immediately following it. It then returns the size
 of the new block to be the stepping value of \texttt{sweepPhase}.
+
+\section{Exercise 5}
+\label{sec:Ex5}
+\textit{Implement the \texttt{markPhase} in a non-recursive fashion}\\
+
+The non-recursive \texttt{markPhase} function iterates through the stack,
+painting referred headers grey. It then invokes the \texttt{traverse} function
+until there are no grey headers on the heap.
+
+\texttt{traverse} iterates through the heap, painting grey headers black, and
+painting any headers they refer grey.
+It returns \texttt{TRUE} or \texttt{FALSE}, indicating whether there are still
+any grey blocks on the heap.
+
+\section{Exercise 6}
+\label{sec:Ex6}
+\textit{Implement "stop and copy" garbage collection}\\
+
+The "stop and copy" allocate method, \texttt{allocateStopAndCopy} works simply
+by putting the requested block in the first available slot in the free-list
+(which is just the last, free, part of the from-heap). If there are not enough
+free words, \texttt{collectStopAndCopy} is called.
+
+\texttt{collectStopAndCopy} iterates through the heap, invoking
+\texttt{copyBlock} on each heap reference it finds, replacing the stack content
+with the result.
+
+\texttt{copyBlock} takes a pointer to a block header, copies the entire block to
+the free-list (which is now on the to-heap), and returns it new address on the to-heap.
+
+\texttt{collectStopAndCopy} then invokes \texttt{copyFromTo}, which iterates
+through every occupied block on the to-heap, looking for references to the
+to-heap (live blocks that have not yet been copied). \texttt{copyFromTo} then
+moves such refered blocks to the to-heap, marking the block on the from-heap
+with a "forward" pointer to the to-heap, so that it can avoid copying the same
+block more than once.
+Finally, \texttt{copyFromTo} swaps the to- and from-heap.
+
+\section{Testing}
+To test the stop and copy implementation, simply make the default make target,
+and run the executable listmachine on the exXX.out files.
+
+Testing the mark and sweep implementation takes a little work (I know, I'm
+sorry). To test mark and sweep, the following lines in listmachine.c need to be
+commented in/out respectively: 638/639 and 303/304. Then the make/run process
+is the same as for stop and copy.
+
+\pagebreak
+\section{Appendix/code}
+listmachine.c
+\lstinputlisting{listmachine.c}
+
 \end{document}

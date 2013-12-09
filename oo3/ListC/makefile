@@ -1,4 +1,4 @@
-default: report listmachine
+default: listmachine
 
 report: report/report.pdf
 
